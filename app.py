@@ -453,10 +453,17 @@ def inject_custom_css() -> None:
             border-radius: 8px;
             padding: 1rem 1rem 0.85rem;
             box-shadow: 0 8px 22px rgba(23, 26, 32, 0.05);
+            overflow: visible;
+            min-width: 0;
         }
 
         div[data-testid="stMetricValue"] {
             color: var(--ink);
+            white-space: normal;
+            overflow: visible;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            text-overflow: clip;
         }
 
         section[data-testid="stSidebar"] {
@@ -587,6 +594,55 @@ def inject_custom_css() -> None:
             line-height: 1.35;
         }
 
+        .status-metric-grid {
+            display: grid;
+            grid-template-columns: minmax(320px, 1.6fr) minmax(220px, 1fr) minmax(220px, 1fr);
+            gap: 0.85rem;
+            margin: 0.45rem 0 0.95rem;
+            align-items: stretch;
+        }
+
+        .status-metric-card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: 0 8px 22px rgba(23, 26, 32, 0.05);
+            padding: 0.9rem 1rem;
+            min-width: 0;
+            overflow: visible;
+        }
+
+        .status-metric-label {
+            color: var(--muted);
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            line-height: 1.25;
+            margin-bottom: 0.45rem;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .status-metric-value {
+            color: var(--ink);
+            font-size: 0.98rem;
+            line-height: 1.35;
+            font-weight: 750;
+            white-space: normal;
+            overflow: visible;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            text-overflow: clip;
+        }
+
+        .status-metric-value.timestamp {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
         .section-panel {
             background: var(--panel);
             border: 1px solid var(--line);
@@ -701,6 +757,21 @@ def inject_custom_css() -> None:
             .metric-card {
                 min-height: 128px;
             }
+            .status-metric-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .status-metric-card.wide {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .status-metric-grid {
+                grid-template-columns: 1fr;
+            }
+            .status-metric-card.wide {
+                grid-column: auto;
+            }
         }
         </style>
         """,
@@ -750,6 +821,24 @@ def render_metric_card(title: str, value: str, caption: str) -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_status_metric_grid(items: list[dict[str, object]]) -> None:
+    cards = []
+    for item in items:
+        card_class = "status-metric-card"
+        if item.get("wide"):
+            card_class += " wide"
+        value_class = "status-metric-value"
+        if item.get("monospace"):
+            value_class += " timestamp"
+        cards.append(
+            f'<div class="{card_class}">'
+            f'<div class="status-metric-label">{html_text(item.get("label"))}</div>'
+            f'<div class="{value_class}">{html_text(item.get("value"))}</div>'
+            "</div>"
+        )
+    st.markdown(f'<div class="status-metric-grid">{"".join(cards)}</div>', unsafe_allow_html=True)
 
 
 def render_section_card(title: str, body_html: str) -> None:
@@ -909,10 +998,21 @@ def render_overview() -> None:
         row = latest.df.iloc[0]
         can_predict = boolish(row.get("can_predict_with_historical_model"))
         status = row.get("feature_alignment_status", "n/a")
-        col_a, col_b, col_c = st.columns(3)
-        col_a.metric("prediction_cutoff", str(row.get("prediction_cutoff", "n/a")))
-        col_b.metric("feature_alignment_status", str(status))
-        col_c.metric("can_predict_with_historical_model", str(row.get("can_predict_with_historical_model", "n/a")))
+        render_status_metric_grid(
+            [
+                {
+                    "label": "prediction_cutoff",
+                    "value": row.get("prediction_cutoff", "n/a"),
+                    "monospace": True,
+                    "wide": True,
+                },
+                {"label": "feature_alignment_status", "value": status},
+                {
+                    "label": "can_predict_with_historical_model",
+                    "value": row.get("can_predict_with_historical_model", "n/a"),
+                },
+            ]
+        )
         if can_predict is False:
             st.warning("This row is an input-construction artifact, not a formal prediction result.")
 
@@ -1548,10 +1648,18 @@ def render_latest_prediction_input() -> None:
     can_predict_value = row.get("can_predict_with_historical_model", "n/a")
     can_predict = boolish(can_predict_value)
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("prediction_cutoff", str(row.get("prediction_cutoff", "n/a")))
-    col2.metric("feature_alignment_status", str(row.get("feature_alignment_status", "n/a")))
-    col3.metric("can_predict_with_historical_model", str(can_predict_value))
+    render_status_metric_grid(
+        [
+            {
+                "label": "prediction_cutoff",
+                "value": row.get("prediction_cutoff", "n/a"),
+                "monospace": True,
+                "wide": True,
+            },
+            {"label": "feature_alignment_status", "value": row.get("feature_alignment_status", "n/a")},
+            {"label": "can_predict_with_historical_model", "value": can_predict_value},
+        ]
+    )
 
     if can_predict is False:
         st.warning("This row is an input-construction artifact, not a formal prediction result.")

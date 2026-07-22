@@ -209,10 +209,10 @@ def confidence_level_text(probability_up: float | None) -> str:
     if probability_up is None:
         return "n/a"
     if is_low_confidence_probability(probability_up):
-        return "Low confidence"
+        return "Low"
     if abs(probability_up - CONSERVATIVE_THRESHOLD) >= 0.20:
-        return "High confidence"
-    return "Moderate confidence"
+        return "High"
+    return "Moderate"
 
 
 def predicted_direction_for_threshold(probability_up: float | None, threshold: float | None) -> str:
@@ -457,7 +457,9 @@ def inject_custom_css() -> None:
             min-width: 0;
         }
 
-        div[data-testid="stMetricValue"] {
+        div[data-testid="stMetricValue"],
+        div[data-testid="stMetricValue"] > div,
+        div[data-testid="stMetricValue"] * {
             color: var(--ink);
             white-space: normal;
             overflow: visible;
@@ -1032,9 +1034,24 @@ def render_data() -> None:
         df = fused.df
         assert df is not None
         col1, col2, col3 = st.columns(3)
-        col1.metric("Fused rows", f"{len(df):,}")
-        col2.metric("Fused columns", f"{len(df.columns):,}")
-        col3.metric("Date range", date_range_text(df))
+        with col1:
+            render_metric_card(
+                "Fused rows",
+                f"{len(df):,}",
+                "Aligned trading days in the modelling table.",
+            )
+        with col2:
+            render_metric_card(
+                "Fused columns",
+                f"{len(df.columns):,}",
+                "All engineered columns before feature selection.",
+            )
+        with col3:
+            render_metric_card(
+                "Date range",
+                date_range_text(df),
+                "Coverage of the fused modelling dataset.",
+            )
 
         st.subheader("Missing Values")
         missing = (
